@@ -1,6 +1,6 @@
 # #############################################################################
 # File: main.py
-# Description: 
+# Description:
 # Author: Mira Abad, Alejandro
 # #############################################################################
 
@@ -10,74 +10,94 @@
 import random
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 # #############################################################################
 
-# Generate population
+# Generate histogram
 # #############################################################################
-def gen_data(dict):
-    # Crear la lista basada en el diccionario
-    lista = [valor for valor, frecuencia in dict.items() for _ in range(frecuencia)]
-    return lista
 
+
+def gen_hist(data, k, freq):
+    # Generar el histograma
+    hist, bins = np.histogram(
+        data, bins=k, weights=freq)
+
+    return hist, bins
+
+
+def sq_error(a, b):
+    s1 = p[b] - p[a]
+    s2 = pp[b] - pp[a]
+    print(f"S1 - {s1}, S2 - {s2}")
+    return (s2 - (s1*s1)) / (b-a+1)
 
 # #############################################################################
 # Main
 # #############################################################################
-def main():
-    random.seed(2023)
-    # Definir los valores y las frecuencias
-    valores = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-    frecuencias = np.array([7, 3, 4, 5, 9, 10, 8, 1, 9, 4])
 
-    # Calcular la frecuencia total
-    frecuencia_total = sum(frecuencias)
 
-    # Definir el número de intervalos
-    num_intervalos = 6
+# random.seed(2023)<
+# Definir los valores y las frecuencias
+# data = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+# f = np.array([7, 3, 4, 5, 9, 10, 8, 1, 9, 4])
+f = [4, 2, 3, 6, 5, 6, 12, 16]
+n = len(f)
+k = 3
 
-    # Calcular la frecuencia objetivo para cada intervalo
-    frecuencia_objetivo = frecuencia_total / num_intervalos
+# p = list(np.zeros(n+1))
+# pp = list(np.zeros(n+1))
 
-    # Crear los intervalos
-    intervalos = []
-    frecuenciasFin = []
-    intervalo_actual = []
-    frecuencia_actual = 0
+p = [0]
+pp = [0]
+for i in range(1, n+1):
+    p.append(p[i-1] + f[i-1])
+    pp.append(pp[i-1] + (f[i-1] ** 2))
 
-    for valor, frecuencia in zip(valores, frecuencias):
-        frecuenciasFin.append(0)
-        
-        if frecuencia_actual + frecuencia <= frecuencia_objetivo:
-            # Si agregar el valor actual no excede la frecuencia objetivo, agregarlo al intervalo actual
-            intervalo_actual.append(valor)
-            frecuencia_actual += frecuencia
-            
-            index = intervalos.index(intervalos[-1]) if len(intervalos) > 0 else 0
-            frecuenciasFin[index] = frecuencia_actual
+best_err = []
+
+for i in range(0, k):
+    best_err.append([0])
+
+#for i in range(0, n+1):
+#    print(i, n)
+#    best_err[0].append(sq_error(0, i))
+
+index = []
+index.append(0)
+
+for bucket in range(1, k+1):
+    # Find optimal histograms for [1..k]
+    for item in range(1, n+1):
+        if bucket == 1:
+            best_err[item][bucket] = sq_error(1, item)
         else:
-            # Si agregar el valor actual excede la frecuencia objetivo, iniciar un nuevo intervalo
-            intervalos.append(intervalo_actual)
-            intervalo_actual = [valor]
-            frecuencia_actual = frecuencia
-            
-            index = intervalos.index(intervalos[-1]) if len(intervalos) > 0 else 0
-            frecuenciasFin[index] = frecuencia_actual
-        
-        
-    # Asegurarse de agregar el último intervalo
-    if intervalo_actual:
-        intervalos.append(intervalo_actual)
-        # frecuenciasFin.append(frecuencia_actual)
+            # Multiple buckets
+            best_err[item][bucket] = 999999999999
+            # Try every possible last bucket
+            for j in range(1, item-1):
+                best_err[item][bucket] = best_err[j][bucket-1] + \
+                    sq_error(j+1, item)
 
-    # Imprimir los intervalos
-    for i, intervalo in enumerate(intervalos):
-        print(f'Intervalo {i+1}: {intervalo}')
-    for i, freq in enumerate(frecuenciasFin):
-        print(f'Freq {i+1}: {freq}')
-# #############################################################################
-    
-# #############################################################################
-# Exec
-# #############################################################################
-if __name__ == "__main__":
-    main()
+
+# ---------------------------------------------------------
+#  Now we compute the V-opt. histogram with B buckets
+
+#  Output:
+
+#     BestError[k][i] = best error of histogram
+#                       using k buckets
+# 		  on data points (1..i)
+#  ---------------------------------------------------------
+# The dynamic algorithm uses these variables:
+
+#  k = # buckets
+#  i = current item - items processed are: (1..i)
+#  BestError[k][i] = min. error in histogram of k buckets for f1..fi
+for bucket in range(1, k+1):
+    for item in range(1, n+1):
+        best_err[bucket].append(999999999)
+        for j in range(0, item):
+            err = sq_error(j, item) + best_err[bucket-1][j]
+            if err < best_err[bucket][item]:
+                best_err[bucket][item] = err
+                index.append(j)
