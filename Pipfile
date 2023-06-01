@@ -8,6 +8,7 @@ numpy = "*"
 pandas = "*"
 memory-profiler = "*"
 mlxtend = "*"
+matplotlib="*"
 
 [dev-packages]
 ipykernel = "*"
